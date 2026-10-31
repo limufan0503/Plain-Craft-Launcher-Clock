@@ -33,6 +33,7 @@ public static partial class Launcher
     public static PageDownloadServer? frmDownloadServer;
     public static PageDownloadLabyMod? frmDownloadLabyMod;
     public static PageDownloadLegacyFabric? frmDownloadLegacyFabric;
+    public static PageDownloadJava? frmDownloadJava;
     public static PageDownloadMod? frmDownloadMod;
     public static PageDownloadPack? frmDownloadPack;
     public static PageDownloadDataPack? frmDownloadDataPack;

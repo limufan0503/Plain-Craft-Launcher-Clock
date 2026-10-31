@@ -244,6 +244,13 @@
                               LogoScale="0.95"
                               SvgIcon="lucide/server">
             </local:MyListItem>
+            <local:MyListItem x:Name="ItemDownloadJava" Type="RadioBox" IsScaleAnimationEnabled="False" Tag="19"
+                              Check="PageCheck"
+                              MinPaddingRight="35" Height="36" VerticalAlignment="Top"
+                              Title="下载 Java"
+                              LogoScale="0.95"
+                              SvgIcon="lucide/coffee">
+            </local:MyListItem>
             <local:MyListItem x:Name="ItemLegacyFabric" Type="RadioBox" IsScaleAnimationEnabled="False" Tag="18"
                               Check="PageCheck"
                               MinPaddingRight="35" Height="36" VerticalAlignment="Top"

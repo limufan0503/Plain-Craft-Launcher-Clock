@@ -171,6 +171,11 @@ public partial class PageDownloadLeft : IRefreshable
                 ItemDownloadServer.Checked = true;
                 break;
             }
+            case FormMain.PageSubType.DownloadJava:
+            {
+                ItemDownloadJava.Checked = true;
+                break;
+            }
             case FormMain.PageSubType.DownloadLabyMod:
             {
                 GameDownload.DlLabyModListLoader.Start(isForceRestart: true);
@@ -327,6 +332,12 @@ public partial class PageDownloadLeft : IRefreshable
                 if (Launcher.frmDownloadServer is null)
                     Launcher.frmDownloadServer = new PageDownloadServer();
                 return Launcher.frmDownloadServer;
+            }
+            case FormMain.PageSubType.DownloadJava:
+            {
+                if (Launcher.frmDownloadJava is null)
+                    Launcher.frmDownloadJava = new PageDownloadJava();
+                return Launcher.frmDownloadJava;
             }
             case FormMain.PageSubType.DownloadLabyMod:
             {
