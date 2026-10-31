@@ -189,11 +189,16 @@ public class BlurBorder : Border
                     dc.PushTransform(new ScaleTransform(RefractionScale, RefractionScale, center.X, center.Y));
                 }
 
-                BackgroundPresenter.DrawVisual(dc, drawingVisual, default);
-
-                if (RefractionScale is > 1.0 or < 1.0)
+                try
                 {
-                    dc.Pop();
+                    BackgroundPresenter.DrawVisual(dc, drawingVisual, default);
+                }
+                finally
+                {
+                    if (RefractionScale is > 1.0 or < 1.0)
+                    {
+                        dc.Pop();
+                    }
                 }
 
                 if (layoutClip is not null)
@@ -209,7 +214,14 @@ public class BlurBorder : Border
         // 独立于模糊开关，保证玻璃质感始终可见。
         if (GlassMode)
         {
-            DrawGlassSheen(dc);
+            try
+            {
+                DrawGlassSheen(dc);
+            }
+            catch (Exception ex)
+            {
+                try { System.IO.File.AppendAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "glass_crash.txt"), ex + "\r\n\r\n"); } catch { }
+            }
         }
     }
 
