@@ -144,16 +144,6 @@
             <TextBlock Text="{loc:Loc Setup.Left.Category.About}" Margin="13,5,5,3" Opacity="0.6"
                        FontSize="12" x:Name="TextAboutCategory" />
 
-            <local:MyListItem x:Name="ItemAbout" IsScaleAnimationEnabled="False" Tag="4" MinPaddingRight="35"
-                               Check="PageCheck"
-                               Height="36" VerticalAlignment="Top"
-                               Title="{loc:Loc Setup.Left.Item.About}" Type="RadioBox"
-                              SvgIcon="lucide/info" />
-            <local:MyListItem x:Name="ItemUpdate" IsScaleAnimationEnabled="False" Tag="8" MinPaddingRight="35"
-                               Check="PageCheck"
-                               Height="36" VerticalAlignment="Top"
-                               Title="{loc:Loc Setup.Left.Item.Update}" Type="RadioBox"
-                              SvgIcon="lucide/refresh-cw" />
             <local:MyListItem x:Name="ItemFeedback" IsScaleAnimationEnabled="False" Type="RadioBox" Tag="6"
                                Check="PageCheck"
                                MinPaddingRight="35" Height="36" VerticalAlignment="Top"

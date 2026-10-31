@@ -801,13 +801,9 @@ public partial class PageSetupUI : IPageView
                     : Visibility.Visible;
                 Launcher.frmSetupLeft.ItemJava.Visibility =
                     !HiddenForceShow && conf.SetupJava ? Visibility.Collapsed : Visibility.Visible;
-                Launcher.frmSetupLeft.ItemUpdate.Visibility =
-                    !HiddenForceShow && conf.SetupUpdate ? Visibility.Collapsed : Visibility.Visible;
                 Launcher.frmSetupLeft.ItemGameLink.Visibility = !HiddenForceShow && conf.SetupGameLink
                     ? Visibility.Collapsed
                     : Visibility.Visible;
-                Launcher.frmSetupLeft.ItemAbout.Visibility =
-                    !HiddenForceShow && conf.SetupAbout ? Visibility.Collapsed : Visibility.Visible;
                 Launcher.frmSetupLeft.ItemFeedback.Visibility = !HiddenForceShow && conf.SetupFeedback
                     ? Visibility.Collapsed
                     : Visibility.Visible;

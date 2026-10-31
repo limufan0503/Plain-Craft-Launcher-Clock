@@ -299,7 +299,7 @@ public partial class FormMain
                 {
                     GameDownload.dlClientListMojangLoader.Start(1); // PCL 会同时根据这里的加载结果决定是否使用官方源进行下载
                     RunCountSub();
-                    UpdateManager.serverLoader.Start(1);
+                    // Clock: 移除自动检查更新（避免离线时反复弹"获取启动器更新失败"）
                     Common.RunInNewThread(Launcher.TryClearTaskTemp, "TryClearTaskTemp", ThreadPriority.BelowNormal);
                 }
                 catch (Exception ex)
@@ -358,8 +358,8 @@ public partial class FormMain
         if ((int)Config.Launch.GameWindowMode == 5)
             Config.Launch.GameWindowMode = GameWindowSizeMode.Default;
 
-        // 更新后展示社区版提示
-        UpdateManager.ShowCEAnnounce();
+        // 更新后展示社区版提示（Clock: 已移除，不再联网拉取公告）
+        // UpdateManager.ShowCEAnnounce();
         // 输出更新日志
         if (lastVersionCode <= 0)
             return;

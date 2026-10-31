@@ -34,8 +34,6 @@ public partial class PageSetupLeft : IPageView
         if (ItemUI.Checked && hide.SetupUi) isHiddenPage = true;
         if (ItemLauncherLanguage.Checked && hide.SetupLauncherLanguage) isHiddenPage = true;
         if (ItemLauncherMisc.Checked && hide.SetupLauncherMisc) isHiddenPage = true;
-        if (ItemAbout.Checked && hide.SetupAbout) isHiddenPage = true;
-        if (ItemUpdate.Checked && hide.SetupUpdate) isHiddenPage = true;
         if (ItemFeedback.Checked && hide.SetupFeedback) isHiddenPage = true;
         if (ItemLog.Checked && hide.SetupLog) isHiddenPage = true;
         if (PageSetupUI.HiddenForceShow)
@@ -64,10 +62,6 @@ public partial class PageSetupLeft : IPageView
             ItemLauncherLanguage.SetChecked(true, false, false);
         else if (!hideCfg.SetupLauncherMisc)
             ItemLauncherMisc.SetChecked(true, false, false);
-        else if (!hideCfg.SetupAbout)
-            ItemAbout.SetChecked(true, false, false);
-        else if (!hideCfg.SetupUpdate)
-            ItemUpdate.SetChecked(true, false, false);
         else if (!hideCfg.SetupFeedback)
             ItemFeedback.SetChecked(true, false, false);
         else if (!hideCfg.SetupLog)
@@ -181,7 +175,7 @@ public partial class PageSetupLeft : IPageView
                 }
                 case 2:
                 {
-                    Common.OpenWebsite("https://github.com/PCL-Community/PCL2-CE/issues/");
+                    Common.OpenWebsite("https://github.com/limufan0503/Plain-Craft-Launcher-Clock/issues/");
                     break;
                 }
             }
