@@ -18,9 +18,9 @@
             <KernelType x:Key="BlurType">Gaussian</KernelType>
 
             <!-- Clock: 液态玻璃资源 -->
-            <sys:Double x:Key="GlassRefractionScale">1.08</sys:Double>
-            <SolidColorBrush x:Key="ColorBrushGlassTint" Color="#9fd0ff" Opacity="0.12" />
-            <SolidColorBrush x:Key="ColorBrushGlassBorder" Color="#FFFFFF" Opacity="0.5" />
+            <sys:Double x:Key="GlassRefractionScale">1.15</sys:Double>
+            <SolidColorBrush x:Key="ColorBrushGlassTint" Color="#9fd0ff" Opacity="0.2" />
+            <SolidColorBrush x:Key="ColorBrushGlassBorder" Color="#FFFFFF" Opacity="0.55" />
             <LinearGradientBrush x:Key="ColorBrushGlassHighlight" StartPoint="0,0" EndPoint="0,1">
                 <GradientStop Color="#FFFFFF" Offset="0" />
                 <GradientStop Color="#00FFFFFF" Offset="1" />

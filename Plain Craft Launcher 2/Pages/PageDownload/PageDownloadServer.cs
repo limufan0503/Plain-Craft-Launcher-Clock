@@ -46,8 +46,12 @@ public class PageDownloadServer : MyPageRight
 		BuildVersionCard(root);
 		BuildActionCard(root);
 
+		// 所有 UI 元素构建完成后再设置初始类型状态（否则会访问尚未初始化的控件导致崩溃）
+		SelectType(ServerCoreType.Vanilla, loadVersions: false);
+
 		PageEnter += () =>
 		{
+			ServerManager.Initialize();
 			RefreshTargets();
 			if (_allVersions.Count == 0 && !_isLoadingVersions)
 				LoadVersionsAsync();
@@ -85,7 +89,6 @@ public class PageDownloadServer : MyPageRight
 		foreach (ServerCoreType type in Enum.GetValues<ServerCoreType>())
 			_panTypes.Children.Add(MakeTypeButton(type));
 		root.Children.Add(Card("服务端核心类型", _panTypes));
-		SelectType(ServerCoreType.Vanilla);
 	}
 
 	private Button MakeTypeButton(ServerCoreType type)
@@ -112,7 +115,7 @@ public class PageDownloadServer : MyPageRight
 		btn.Foreground = Brushes.White;
 	}
 
-	private void SelectType(ServerCoreType type)
+	private void SelectType(ServerCoreType type, bool loadVersions = true)
 	{
 		_selectedType = type;
 		foreach (var child in _panTypes.Children.OfType<Button>())
@@ -121,7 +124,8 @@ public class PageDownloadServer : MyPageRight
 		_labInstallStatus.Text = "";
 		_btnOpenServer.Visibility = Visibility.Collapsed;
 		_txtSearch.Text = "";
-		LoadVersionsAsync();
+		if (loadVersions)
+			LoadVersionsAsync();
 	}
 
 	private void BuildTargetCard(StackPanel root)

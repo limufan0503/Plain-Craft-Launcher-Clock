@@ -160,14 +160,19 @@ public class BlurBorder : Border
             return;
         }
 
-        // 仅当开启模糊时才绘制模糊背景与折射
-        if (BlurRadius != 0)
+        // Clock: 液态玻璃在开启 GlassMode 时，即使模糊关闭也绘制背景（透明玻璃折射）
+        if (BlurRadius != 0 || GlassMode)
         {
             DrawingVisual drawingVisual = new DrawingVisual()
             {
-                Clip = new RectangleGeometry(new Rect(0, 0, RenderSize.Width, RenderSize.Height)),
-                Effect = CreateOptimizedBlurEffect()
+                Clip = new RectangleGeometry(new Rect(0, 0, RenderSize.Width, RenderSize.Height))
             };
+
+            // 仅当模糊开启时施加模糊效果；关闭时保留清晰背景做透明玻璃折射
+            if (BlurRadius != 0)
+            {
+                drawingVisual.Effect = CreateOptimizedBlurEffect();
+            }
 
             using (DrawingContext visualContext = drawingVisual.RenderOpen())
             {
