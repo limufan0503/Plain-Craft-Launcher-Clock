@@ -2,31 +2,32 @@ using System;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using PCL.Core.Minecraft.Server;
 
 namespace PCL;
 
 // Clock 新增：服务器管理右面板（选中服务器的详情 / 配置 / 启动）。
-// 纯代码构建 UI，开服通过启动 java 进程实现。
-public class PageServerRight : Page
+// 派生自 MyPageRight，以便 PageChangeAnim 能正确进行类型转换与切换动画。
+// 开服通过启动 java 进程实现（一键开服）。
+public class PageServerRight : MyPageRight
 {
 	private StackPanel _panel = null!;
 
 	public PageServerRight()
 	{
-		Background = Brushes.Transparent;
-		var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(16) };
+		var scroll = new MyScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(16) };
 		_panel = new StackPanel();
 		scroll.Content = _panel;
-		Content = scroll;
-		Loaded += (s, e) => Refresh();
-		ServerManager.ServersChanged += () => Dispatcher.Invoke(Refresh);
+		Child = scroll;
+		PanScroll = scroll;
+		Loaded += (s, e) => LoadServer(ServerManager.CurrentServer);
+		ServerManager.ServersChanged += () => Dispatcher.Invoke(() => LoadServer(ServerManager.CurrentServer));
 	}
 
-	public void Refresh()
+	public void LoadServer(ServerInfo? s)
 	{
-		var s = ServerManager.CurrentServer;
 		_panel.Children.Clear();
 		if (s == null)
 		{
@@ -47,13 +48,14 @@ public class PageServerRight : Page
 
 		var startBtn = new Button
 		{
-			Content = s.HasCoreFile ? "启动服务器" : "请先放入核心文件",
+			Content = s.HasCoreFile ? "启动服务器" : "请先放入/下载核心文件",
 			Margin = new Thickness(0, 12, 0, 0),
 			Padding = new Thickness(16, 8, 16, 8),
 			Background = new SolidColorBrush(Color.FromRgb(40, 140, 90)),
 			Foreground = Brushes.White,
 			BorderThickness = new Thickness(0),
-			Cursor = System.Windows.Input.Cursors.Hand
+			Cursor = Cursors.Hand,
+			IsEnabled = s.HasCoreFile
 		};
 		startBtn.Click += (sender, e) => Start(s);
 		_panel.Children.Add(startBtn);
@@ -66,17 +68,22 @@ public class PageServerRight : Page
 			Background = new SolidColorBrush(Color.FromRgb(150, 50, 50)),
 			Foreground = Brushes.White,
 			BorderThickness = new Thickness(0),
-			Cursor = System.Windows.Input.Cursors.Hand
+			Cursor = Cursors.Hand
 		};
 		delBtn.Click += (sender, e) =>
 		{
 			if (MessageBox.Show("确定删除该服务器？", "确认", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
 			{
 				ServerManager.DeleteServer(s);
-				Refresh();
+				LoadServer(ServerManager.CurrentServer);
 			}
 		};
 		_panel.Children.Add(delBtn);
+	}
+
+	public void RefreshStatus()
+	{
+		LoadServer(ServerManager.CurrentServer);
 	}
 
 	private void Start(ServerInfo s)

@@ -30,6 +30,7 @@ public static partial class Launcher
     public static PageDownloadNeoForge? frmDownloadNeoForge;
     public static PageDownloadCleanroom? frmDownloadCleanroom;
     public static PageDownloadFabric? frmDownloadFabric;
+    public static PageDownloadServer? frmDownloadServer;
     public static PageDownloadLabyMod? frmDownloadLabyMod;
     public static PageDownloadLegacyFabric? frmDownloadLegacyFabric;
     public static PageDownloadMod? frmDownloadMod;

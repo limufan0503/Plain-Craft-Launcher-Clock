@@ -8,18 +8,19 @@ using PCL.Core.Minecraft.Server;
 namespace PCL;
 
 // Clock 新增：服务器管理左面板（服务器列表 / 新建服务器 / 下载服务端入口）。
-// 纯代码构建 UI（Clock 原始 XAML 不可反编译），视觉后续接入 GlassStyle 增强。
-public class PageServerLeft : Page
+// 派生自 MyPageLeft，以便 PageChangeAnim 能正确进行类型转换与切换动画。
+public class PageServerLeft : MyPageLeft
 {
 	private StackPanel _list = null!;
 	private TextBlock _empty = null!;
 
 	public PageServerLeft()
 	{
-		Background = Brushes.Transparent;
-		var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(12, 8, 12, 8) };
+		// MyPageLeft 本身是 Grid，里面放一个滚动容器
+		var scroll = new MyScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(12, 8, 12, 8) };
 		var root = new StackPanel { Orientation = Orientation.Vertical };
 		scroll.Content = root;
+		Children.Add(scroll);
 
 		root.Children.Add(new TextBlock { Text = "服务器", FontSize = 20, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, Margin = new Thickness(4, 4, 0, 10) });
 
@@ -36,12 +37,22 @@ public class PageServerLeft : Page
 		_list = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 4, 0, 0) };
 		root.Children.Add(_list);
 
-		Content = scroll;
-		Loaded += (s, e) => { ServerManager.Initialize(); Refresh(); };
-		ServerManager.ServersChanged += () => Dispatcher.Invoke(Refresh);
+		Loaded += (s, e) =>
+		{
+			ServerManager.Initialize();
+			RefreshList();
+			EnsureSelection();
+		};
+		ServerManager.ServersChanged += OnServersChanged;
 	}
 
-	private Button MakeButton(string text, RoutedEventHandler handler)
+	private void OnServersChanged()
+	{
+		Dispatcher.Invoke(RefreshList);
+		Dispatcher.Invoke(EnsureSelection);
+	}
+
+	private static Button MakeButton(string text, RoutedEventHandler handler)
 	{
 		var b = new Button
 		{
@@ -57,7 +68,7 @@ public class PageServerLeft : Page
 		return b;
 	}
 
-	public void Refresh()
+	public void RefreshList()
 	{
 		_list.Children.Clear();
 		if (ServerManager.Servers.Count == 0)
@@ -78,16 +89,59 @@ public class PageServerLeft : Page
 			};
 			var sp = new StackPanel();
 			sp.Children.Add(new TextBlock { Text = s.Name, Foreground = Brushes.White, FontWeight = FontWeights.SemiBold });
-			sp.Children.Add(new TextBlock { Text = s.CoreDescription, Foreground = new SolidColorBrush(Color.FromArgb(170, 255, 255, 255)), FontSize = 12 });
+			sp.Children.Add(new TextBlock { Text = GetServerInfoText(s), Foreground = new SolidColorBrush(Color.FromArgb(170, 255, 255, 255)), FontSize = 12 });
 			item.Child = sp;
 			var captured = s;
 			item.MouseLeftButtonUp += (sender, e) =>
 			{
 				ServerManager.CurrentServer = captured;
-				Launcher.frmServerRight?.Refresh();
+				Launcher.frmServerRight?.LoadServer(captured);
 			};
 			_list.Children.Add(item);
 		}
+	}
+
+	private static string GetServerInfoText(ServerInfo server)
+	{
+		string state;
+		if (server.HasCoreFile)
+			state = server.LastExitCode.HasValue && server.LastExitCode.Value != 0 ? "已崩溃" : "已停止";
+		else
+			state = "无核心文件";
+		return string.IsNullOrWhiteSpace(server.McVersion)
+			? $"{state} · {server.CoreType}"
+			: $"{state} · {server.CoreType} {server.McVersion}";
+	}
+
+	public void EnsureSelection()
+	{
+		var server = ServerManager.CurrentServer;
+		if (server == null || !ServerManager.Servers.Contains(server))
+			server = ServerManager.Servers.Count > 0 ? ServerManager.Servers[0] : null;
+		if (server == null)
+		{
+			Launcher.frmServerRight?.LoadServer(null);
+			return;
+		}
+		ServerManager.CurrentServer = server;
+		Launcher.frmServerRight?.LoadServer(server);
+	}
+
+	public void SelectServerByFolder(string folderName)
+	{
+		var server = ServerManager.Servers.Find(s => string.Equals(s.FolderName, folderName, StringComparison.OrdinalIgnoreCase));
+		if (server != null)
+		{
+			ServerManager.CurrentServer = server;
+			RefreshList();
+			SelectServer(server);
+		}
+	}
+
+	private void SelectServer(ServerInfo server)
+	{
+		ServerManager.CurrentServer = server;
+		Launcher.frmServerRight?.LoadServer(server);
 	}
 
 	private void OnCreate(object sender, RoutedEventArgs e)
@@ -97,15 +151,15 @@ public class PageServerLeft : Page
 		{
 			var s = ServerManager.CreateServer(name);
 			ServerManager.CurrentServer = s;
-			Refresh();
-			Launcher.frmServerRight?.Refresh();
+			RefreshList();
+			Launcher.frmServerRight?.LoadServer(s);
 		}
 	}
 
 	private void OnDownload(object sender, RoutedEventArgs e)
 	{
-		// 下载服务端页将在下一阶段补充；此处先提示。
-		MessageBox.Show("下载服务端（原版 / Paper / Purpur / Folia）功能将在下一版本接入。", "提示");
+		// 跳转到「下载」页的「下载服务端」子页（与 Clock 行为一致）
+		Launcher.frmMain?.PageChange(FormMain.PageType.Download, FormMain.PageSubType.DownloadServer);
 	}
 
 	private string? InputBox(string title, string prompt, string defaultText)

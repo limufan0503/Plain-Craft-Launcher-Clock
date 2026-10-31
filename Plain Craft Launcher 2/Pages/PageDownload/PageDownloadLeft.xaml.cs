@@ -166,6 +166,11 @@ public partial class PageDownloadLeft : IRefreshable
                 ItemFabric.Checked = true;
                 break;
             }
+            case FormMain.PageSubType.DownloadServer:
+            {
+                ItemDownloadServer.Checked = true;
+                break;
+            }
             case FormMain.PageSubType.DownloadLabyMod:
             {
                 GameDownload.DlLabyModListLoader.Start(isForceRestart: true);
@@ -316,6 +321,12 @@ public partial class PageDownloadLeft : IRefreshable
                 if (Launcher.frmDownloadFabric is null)
                     Launcher.frmDownloadFabric = new PageDownloadFabric();
                 return Launcher.frmDownloadFabric;
+            }
+            case FormMain.PageSubType.DownloadServer:
+            {
+                if (Launcher.frmDownloadServer is null)
+                    Launcher.frmDownloadServer = new PageDownloadServer();
+                return Launcher.frmDownloadServer;
             }
             case FormMain.PageSubType.DownloadLabyMod:
             {
