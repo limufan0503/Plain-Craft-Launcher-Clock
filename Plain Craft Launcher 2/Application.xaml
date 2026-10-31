@@ -436,6 +436,8 @@
                 <Setter Property="Background" Value="{DynamicResource ColorBrushHalfWhite}" />
                 <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                 <Setter Property="FontSize" Value="13" />
+                <!-- Clock: 修复 StackPanel 布局下下拉框高度塌陷成"细条"，与 MyTextBox(MinHeight=28) 对齐 -->
+                <Setter Property="MinHeight" Value="28" />
                 <Setter Property="MaxDropDownHeight" Value="160" />
                 <Setter Property="Template">
                     <Setter.Value>

@@ -167,10 +167,19 @@ public class PageServerRight : MyPageRight
 	{
 		try
 		{
-			ServerManager.StartServer(s,
+			bool adopted;
+			ServerManager.StartServer(s, out adopted,
 				onOutput: AppendConsole,
 				onExit: () => Dispatcher.Invoke(() => { AppendConsole(">>> 服务器已退出"); LoadServer(s); }));
-			AppendConsole(">>> 正在启动服务器…");
+			if (adopted)
+			{
+				AppendConsole(">>> 检测到该服务器已有一个正在运行的实例，已接管控制（无需重复启动）");
+				AppendConsole(">>> 说明：之前的「莫名停止」是目录锁冲突——旧进程仍在后台运行。现在已恢复为运行中。");
+			}
+			else
+			{
+				AppendConsole(">>> 正在启动服务器…");
+			}
 			LoadServer(s);
 		}
 		catch (Exception ex)

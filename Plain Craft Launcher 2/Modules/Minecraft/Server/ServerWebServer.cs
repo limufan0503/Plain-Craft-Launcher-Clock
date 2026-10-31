@@ -110,7 +110,7 @@ public static class ServerWebServer
 
 		if (path == "/api/start" && req.HttpMethod == "POST")
 		{
-			TryAction(resp, server, () => ServerManager.StartServer(server!));
+			TryAction(resp, server, () => ServerManager.StartServer(server!, out _));
 			return;
 		}
 
@@ -131,7 +131,7 @@ public static class ServerWebServer
 					if (ServerManager.IsRunning(server)) ServerManager.StopServer(server);
 					Thread.Sleep(500);
 				}
-				ServerManager.StartServer(server!);
+				ServerManager.StartServer(server!, out _);
 			});
 			return;
 		}

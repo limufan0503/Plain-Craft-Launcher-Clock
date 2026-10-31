@@ -9,6 +9,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using PCL.Core.App;
 using PCL.Core.Logging;
+using PCL.Core.Utils.OS;
 
 namespace PCL.Core.Minecraft.Server;
 
@@ -56,6 +57,9 @@ public class ServerInfo
 	public DateTime? LastStartedAt { get; set; }
 
 	public int? LastExitCode { get; set; }
+
+	/// <summary>最近一次由启动器启动的服务器进程 PID（用于重启启动器后恢复运行状态 / 检测残留进程）。</summary>
+	public int Pid { get; set; }
 
 	[JsonIgnore]
 	public string ServerPath => Path.Combine(ServerManager.BasePath, FolderName);
@@ -168,6 +172,9 @@ public static class ServerManager
 			});
 			CurrentServer = Servers.FirstOrDefault((ServerInfo s) => string.Equals(s.FolderName, currentFolder, StringComparison.OrdinalIgnoreCase)) ?? Servers.FirstOrDefault();
 			LogWrapper.Info("ServerManager", $"已加载 {Servers.Count} 个服务器实例");
+			// Clock: 重启启动器后恢复运行状态——接管记录 PID 仍存活的 java 进程
+			foreach (ServerInfo s in Servers)
+				TryAdoptRecordedProcess(s);
 			ServersChanged?.Invoke();
 		}
 		catch (Exception ex2)
@@ -635,10 +642,26 @@ public static class ServerManager
 	/// 返回启动的进程对象；抛异常表示启动失败。
 	/// onOutput/onExit 在后台线程回调，UI 层需自行 Dispatcher.Invoke。
 	/// </summary>
-	public static Process StartServer(ServerInfo server, Action<string>? onOutput = null, Action? onExit = null)
+	public static Process StartServer(ServerInfo server, out bool adopted, Action<string>? onOutput = null, Action? onExit = null)
 	{
+		adopted = false;
 		if (IsRunning(server))
 			throw new InvalidOperationException("服务器已在运行中");
+
+		// Clock: 启动前检测残留 java 进程（上次启动器退出时未清理的孤儿进程）。
+		// 若存在则接管而不是重复启动——否则新进程会因 world/session.lock 目录锁被旧进程占用而立即崩溃退出（“莫名停止”）。
+		Process? residual = FindResidualProcess(server);
+		if (residual != null)
+		{
+			AdoptProcess(server, residual, onExit);
+			adopted = true;
+			server.LastStartedAt = DateTime.Now;
+			server.LastExitCode = null;
+			SaveServerConfig(server, notify: false);
+			LogWrapper.Info("ServerManager", $"已接管运行中的服务器进程：{server.Name}（PID {residual.Id}）");
+			return residual;
+		}
+
 		if (!server.HasCoreFile)
 			throw new InvalidOperationException("服务器核心文件不存在，请先下载服务端核心");
 		EnsureEulaAccepted(server);
@@ -663,6 +686,7 @@ public static class ServerManager
 		process.Exited += (_, _) =>
 		{
 			try { server.LastExitCode = process.ExitCode; } catch { }
+			server.Pid = 0;
 			RunningProcesses.Remove(server.FolderName);
 			SaveServerConfig(server, notify: false);
 			onExit?.Invoke();
@@ -678,8 +702,78 @@ public static class ServerManager
 		RunningProcesses[server.FolderName] = process;
 		server.LastStartedAt = DateTime.Now;
 		server.LastExitCode = null;
+		server.Pid = process.Id;
 		SaveServerConfig(server, notify: false);
 		return process;
+	}
+
+	/// <summary>
+	/// 扫描所有 java/javaw 进程，返回命令行中同时包含该服务器 jar 文件名与文件夹名的残留进程（可能为 null）。
+	/// </summary>
+	public static Process? FindResidualProcess(ServerInfo server)
+	{
+		try
+		{
+			foreach (string name in new[] { "java", "javaw" })
+			{
+				Process[] procs;
+				try { procs = Process.GetProcessesByName(name); }
+				catch { continue; }
+				foreach (Process p in procs)
+				{
+					try
+					{
+						string? cmd = ProcessInterop.GetCommandLine(p.Id);
+						if (string.IsNullOrEmpty(cmd))
+							continue;
+						if (cmd.Contains(server.JarFileName, StringComparison.OrdinalIgnoreCase)
+							&& cmd.Contains(server.FolderName, StringComparison.OrdinalIgnoreCase))
+							return p;
+					}
+					catch { }
+				}
+			}
+		}
+		catch { }
+		return null;
+	}
+
+	/// <summary>接管一个已存在的服务器进程（加入运行字典并监听退出），用于恢复运行状态。</summary>
+	private static void AdoptProcess(ServerInfo server, Process process, Action? onExit)
+	{
+		process.EnableRaisingEvents = true;
+		process.Exited += (_, _) =>
+		{
+			try { server.LastExitCode = process.ExitCode; } catch { }
+			server.Pid = 0;
+			RunningProcesses.Remove(server.FolderName);
+			SaveServerConfig(server, notify: false);
+			onExit?.Invoke();
+		};
+		RunningProcesses[server.FolderName] = process;
+		server.Pid = process.Id;
+	}
+
+	/// <summary>根据记录在配置中的 PID 尝试接管仍存活的进程（用于重启启动器后恢复“运行中”状态）。</summary>
+	private static void TryAdoptRecordedProcess(ServerInfo server)
+	{
+		if (server.Pid <= 0)
+			return;
+		try
+		{
+			Process p = Process.GetProcessById(server.Pid);
+			if (p.HasExited || (p.ProcessName != "java" && p.ProcessName != "javaw"))
+			{
+				server.Pid = 0;
+				return;
+			}
+			AdoptProcess(server, p, onExit: null);
+			LogWrapper.Info("ServerManager", $"恢复运行状态：{server.Name}（PID {server.Pid}）");
+		}
+		catch
+		{
+			server.Pid = 0;
+		}
 	}
 
 	/// <summary>向正在运行的服务器发送控制台命令（如 stop、say 等）。</summary>
@@ -701,11 +795,24 @@ public static class ServerManager
 	/// <summary>停止服务器。</summary>
 	public static void StopServer(ServerInfo server)
 	{
-		if (RunningProcesses.TryGetValue(server.FolderName, out var p))
+		// Clock: 优先通过控制台发 stop 优雅关闭，失败再强杀（entireProcessTree 确保子进程一并清理）
+		bool killed = false;
+		if (RunningProcesses.TryGetValue(server.FolderName, out var p) && !p.HasExited)
 		{
-			try { if (!p.HasExited) p.Kill(entireProcessTree: true); } catch { }
-			RunningProcesses.Remove(server.FolderName);
+			try { p.StandardInput.WriteLine("stop"); p.StandardInput.Flush(); } catch { }
+			try { if (!p.WaitForExit(5000)) { p.Kill(entireProcessTree: true); killed = true; } } catch { }
 		}
+		// 兜底：扫描并强杀残留 java 进程（可能字典里没有但进程仍存活）
+		Process? residual = FindResidualProcess(server);
+		if (residual != null)
+		{
+			try { residual.Kill(entireProcessTree: true); killed = true; } catch { }
+		}
+		RunningProcesses.Remove(server.FolderName);
+		server.Pid = 0;
+		SaveServerConfig(server, notify: false);
+		if (killed)
+			LogWrapper.Info("ServerManager", $"已强制停止服务器进程：{server.Name}");
 	}
 
 	#endregion
