@@ -8,22 +8,11 @@ internal static class RestrictedFeaturePolicy
 {
     internal static RegionAssessment Assess() => RegionPolicy.Evaluate(RegionPolicy.ReadWindowsSignals());
 
-    internal static bool IsRestricted => Assess().IsRestricted;
+    // Clock 修改：关闭区域功能限制，使游戏下载、补全与整合包安装在任何地区均可用，
+    // 并消除启动时顶部的“在你所在的国家或地区不可用”提示横幅。
+    internal static bool IsRestricted => false;
 
-    internal static bool Check(string feature, bool showHint = true)
-    {
-        var assessment = Assess();
-        if (!assessment.IsRestricted) return true;
-
-        Common.Log($"[RegionPolicy] 已阻止功能 {feature}，判定原因：{assessment.Reason}");
-        if (showHint)
-        {
-            HintService.Show(Hints.Error(Lang.Text(assessment.Classification == RegionClassification.Unknown
-                ? "Region.Feature.Unknown"
-                : "Region.Feature.Restricted")));
-        }
-        return false;
-    }
+    internal static bool Check(string feature, bool showHint = true) => true;
 
     internal static void ThrowIfRestricted(string feature)
     {

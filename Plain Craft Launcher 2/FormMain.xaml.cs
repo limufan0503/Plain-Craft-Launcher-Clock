@@ -1423,6 +1423,11 @@ public partial class FormMain
         Setup = 2,
 
         /// <summary>
+        ///     服务器。这是一个主页面（Clock 新增）。
+        /// </summary>
+        Server = 4,
+
+        /// <summary>
         ///     实例选择。这是一个副页面。
         /// </summary>
         InstanceSelect = 5,
@@ -1918,6 +1923,13 @@ public partial class FormMain
                         Launcher.frmSetupLeft ??= new PageSetupLeft();
                         subType = Launcher.frmSetupLeft.pageID;
                         PageChangeAnim(Launcher.frmSetupLeft, (FrameworkElement)Launcher.frmSetupLeft.PageGet(subType));
+                        break;
+                    }
+                case PageType.Server: // 服务器（Clock 新增）
+                    {
+                        Launcher.frmServerLeft ??= new PageServerLeft();
+                        Launcher.frmServerRight ??= new PageServerRight();
+                        PageChangeAnim(Launcher.frmServerLeft, Launcher.frmServerRight);
                         break;
                     }
                 case PageType.GameLog: // 实时日志

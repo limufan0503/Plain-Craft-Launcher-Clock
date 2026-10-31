@@ -38,6 +38,8 @@ public static partial class Launcher
     public static PageDownloadShader? frmDownloadShader;
     public static PageDownloadResourcePack? frmDownloadResourcePack;
     public static PageDownloadWorld? frmDownloadWorld;
+    public static PageServerLeft? frmServerLeft;
+    public static PageServerRight? frmServerRight;
     public static PageDownloadCompFavorites? frmDownloadCompFavorites;
     public static PageDownloadCompDetail? frmDownloadCompDetail;
     public static PageSetupLeft? frmSetupLeft;
