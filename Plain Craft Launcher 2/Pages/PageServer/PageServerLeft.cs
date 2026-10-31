@@ -57,19 +57,17 @@ public class PageServerLeft : MyPageLeft
 		Dispatcher.Invoke(EnsureSelection);
 	}
 
-	private static Button MakeButton(string text, RoutedEventHandler handler)
+	private static MyButton MakeButton(string text, Action onClick)
 	{
-		var b = new Button
+		var b = new MyButton
 		{
-			Content = text,
-			Margin = new Thickness(0, 0, 8, 0),
+			Text = text,
+			ColorType = MyButton.ColorState.Normal,
 			Padding = new Thickness(14, 6, 14, 6),
-			BorderThickness = new Thickness(0),
+			Margin = new Thickness(0, 0, 8, 0),
 			Cursor = Cursors.Hand
 		};
-		b.SetResourceReference(Button.BackgroundProperty, "ColorBrush2");
-		b.Foreground = Brushes.White;
-		b.Click += handler;
+		b.Click += (_, _) => onClick();
 		return b;
 	}
 
@@ -161,7 +159,7 @@ public class PageServerLeft : MyPageLeft
 		Launcher.frmServerRight?.LoadServer(server);
 	}
 
-	private void OnCreate(object sender, RoutedEventArgs e)
+	private void OnCreate()
 	{
 		var name = InputBox("新建服务器", "请输入服务器名称：", "新服务器");
 		if (!string.IsNullOrWhiteSpace(name))
@@ -173,7 +171,7 @@ public class PageServerLeft : MyPageLeft
 		}
 	}
 
-	private void OnDownload(object sender, RoutedEventArgs e)
+	private void OnDownload()
 	{
 		Launcher.frmMain?.PageChange(FormMain.PageType.Download, FormMain.PageSubType.DownloadServer);
 	}

@@ -505,6 +505,58 @@ public static class ServerManager
 		return server.LatestLogPath;
 	}
 
+	#region server.properties 读写（Clock 新增）
+
+	public static string ServerPropertiesPath(ServerInfo server)
+		=> Path.Combine(server.ServerPath, "server.properties");
+
+	/// <summary>读取 server.properties 中的某个键值（不存在返回 null）。</summary>
+	public static string? GetServerProperty(ServerInfo server, string key)
+	{
+		string path = ServerPropertiesPath(server);
+		if (!File.Exists(path))
+			return null;
+		foreach (string line in File.ReadAllLines(path))
+		{
+			string trimmed = line.Trim();
+			if (trimmed.StartsWith("#") || !trimmed.Contains('='))
+				continue;
+			int idx = trimmed.IndexOf('=');
+			string k = trimmed.Substring(0, idx).Trim();
+			string v = trimmed.Substring(idx + 1).Trim();
+			if (string.Equals(k, key, StringComparison.OrdinalIgnoreCase))
+				return v;
+		}
+		return null;
+	}
+
+	/// <summary>写入 server.properties 中的某个键值（不存在则追加）。</summary>
+	public static void SetServerProperty(ServerInfo server, string key, string value)
+	{
+		string path = ServerPropertiesPath(server);
+		var lines = File.Exists(path) ? new List<string>(File.ReadAllLines(path)) : new List<string>();
+		bool found = false;
+		for (int i = 0; i < lines.Count; i++)
+		{
+			string trimmed = lines[i].Trim();
+			if (trimmed.StartsWith("#") || !trimmed.Contains('='))
+				continue;
+			int idx = trimmed.IndexOf('=');
+			string k = trimmed.Substring(0, idx).Trim();
+			if (string.Equals(k, key, StringComparison.OrdinalIgnoreCase))
+			{
+				lines[i] = key + "=" + value;
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+			lines.Add(key + "=" + value);
+		File.WriteAllLines(path, lines);
+	}
+
+	#endregion
+
 	#region 进程管理（Clock 新增）
 
 	private static readonly Dictionary<string, Process> RunningProcesses = new();
@@ -552,10 +604,11 @@ public static class ServerManager
 	}
 
 	/// <summary>
-	/// 启动服务器（独立 java 进程，保留控制台窗口供查看日志/输入命令）。
+	/// 启动服务器（内嵌控制台：重定向 stdout/stderr 到回调，stdin 支持命令输入）。
 	/// 返回启动的进程对象；抛异常表示启动失败。
+	/// onOutput/onExit 在后台线程回调，UI 层需自行 Dispatcher.Invoke。
 	/// </summary>
-	public static Process StartServer(ServerInfo server)
+	public static Process StartServer(ServerInfo server, Action<string>? onOutput = null, Action? onExit = null)
 	{
 		if (IsRunning(server))
 			throw new InvalidOperationException("服务器已在运行中");
@@ -569,22 +622,53 @@ public static class ServerManager
 		{
 			WorkingDirectory = server.ServerPath,
 			UseShellExecute = false,
-			CreateNoWindow = false
+			RedirectStandardOutput = true,
+			RedirectStandardError = true,
+			RedirectStandardInput = true,
+			CreateNoWindow = true,
+			StandardOutputEncoding = Encoding.UTF8,
+			StandardErrorEncoding = Encoding.UTF8,
+			StandardInputEncoding = Encoding.UTF8
 		};
 		var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+		process.OutputDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) onOutput?.Invoke(e.Data); };
+		process.ErrorDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) onOutput?.Invoke(e.Data); };
 		process.Exited += (_, _) =>
 		{
 			try { server.LastExitCode = process.ExitCode; } catch { }
 			RunningProcesses.Remove(server.FolderName);
 			SaveServerConfig(server, notify: false);
+			onExit?.Invoke();
 		};
 		if (!process.Start())
 			throw new InvalidOperationException("无法启动 java 进程，请检查 Java 路径是否正确");
+		try
+		{
+			process.BeginOutputReadLine();
+			process.BeginErrorReadLine();
+		}
+		catch { }
 		RunningProcesses[server.FolderName] = process;
 		server.LastStartedAt = DateTime.Now;
 		server.LastExitCode = null;
 		SaveServerConfig(server, notify: false);
 		return process;
+	}
+
+	/// <summary>向正在运行的服务器发送控制台命令（如 stop、say 等）。</summary>
+	public static void SendCommand(ServerInfo server, string command)
+	{
+		if (string.IsNullOrWhiteSpace(command))
+			return;
+		if (RunningProcesses.TryGetValue(server.FolderName, out var p) && !p.HasExited)
+		{
+			try
+			{
+				p.StandardInput.WriteLine(command);
+				p.StandardInput.Flush();
+			}
+			catch { }
+		}
 	}
 
 	/// <summary>停止服务器。</summary>

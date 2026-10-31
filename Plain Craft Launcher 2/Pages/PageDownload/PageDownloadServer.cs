@@ -30,13 +30,13 @@ public class PageDownloadServer : MyPageRight
 	private TextBlock _labVersionCount = null!;
 	private StackPanel _panVersions = null!;
 	private TextBlock _labLoading = null!;
-	private Button _btnInstall = null!;
-	private Button _btnOpenServer = null!;
+	private MyButton _btnInstall = null!;
+	private MyButton _btnOpenServer = null!;
 	private TextBlock _labInstallStatus = null!;
 
 	public PageDownloadServer()
 	{
-		var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(16) };
+		var scroll = new MyScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(16) };
 		var root = new StackPanel { Orientation = Orientation.Vertical };
 		scroll.Content = root;
 		Child = scroll;
@@ -103,14 +103,13 @@ public class PageDownloadServer : MyPageRight
 		root.Children.Add(Card("服务端核心类型", _panTypes));
 	}
 
-	private Button MakeTypeButton(ServerCoreType type)
+	private MyButton MakeTypeButton(ServerCoreType type)
 	{
-		var btn = new Button
+		var btn = new MyButton
 		{
-			Content = ModServerDownload.GetTypeName(type),
+			Text = ModServerDownload.GetTypeName(type),
 			Margin = new Thickness(0, 0, 8, 0),
 			Padding = new Thickness(14, 7, 14, 7),
-			BorderThickness = new Thickness(0),
 			Cursor = Cursors.Hand,
 			Tag = type,
 			ToolTip = ModServerDownload.GetTypeDescription(type)
@@ -120,24 +119,15 @@ public class PageDownloadServer : MyPageRight
 		return btn;
 	}
 
-	private void StyleTypeButton(Button btn, bool selected)
+	private void StyleTypeButton(MyButton btn, bool selected)
 	{
-		if (selected)
-		{
-			btn.SetResourceReference(Button.BackgroundProperty, "ColorBrush3");
-			btn.Foreground = Brushes.White;
-		}
-		else
-		{
-			btn.SetResourceReference(Button.BackgroundProperty, "ColorBrush8");
-			btn.SetResourceReference(Button.ForegroundProperty, "ColorBrush1");
-		}
+		btn.ColorType = selected ? MyButton.ColorState.Highlight : MyButton.ColorState.Normal;
 	}
 
 	private void SelectType(ServerCoreType type, bool loadVersions = true)
 	{
 		_selectedType = type;
-		foreach (var child in _panTypes.Children.OfType<Button>())
+		foreach (var child in _panTypes.Children.OfType<MyButton>())
 			StyleTypeButton(child, child.Tag is ServerCoreType t && t == type);
 		_selectedVersion = null;
 		_labInstallStatus.Text = "";
@@ -149,16 +139,10 @@ public class PageDownloadServer : MyPageRight
 
 	private void BuildTargetCard(StackPanel root)
 	{
-		_comboTarget = new ComboBox { Margin = new Thickness(0, 0, 0, 8) };
-		_comboTarget.SetResourceReference(ComboBox.BackgroundProperty, "ColorBrush8");
-		_comboTarget.SetResourceReference(ComboBox.ForegroundProperty, "ColorBrush1");
-		_comboTarget.SetResourceReference(ComboBox.BorderBrushProperty, "ColorBrush6");
+		_comboTarget = new MyComboBox { Margin = new Thickness(0, 0, 0, 8) };
 		_comboTarget.SelectionChanged += (_, _) => UpdateTargetUi();
 
-		_txtNewName = new TextBox { Width = 280, Margin = new Thickness(0, 0, 0, 8), Padding = new Thickness(6) };
-		_txtNewName.SetResourceReference(TextBox.BackgroundProperty, "ColorBrush8");
-		_txtNewName.SetResourceReference(TextBox.ForegroundProperty, "ColorBrush1");
-		_txtNewName.SetResourceReference(TextBox.BorderBrushProperty, "ColorBrush6");
+		_txtNewName = new MyTextBox { Width = 280, Margin = new Thickness(0, 0, 0, 8) };
 		_txtNewName.TextChanged += (_, _) => UpdateTargetUi();
 
 		_hintTarget = new TextBlock { FontSize = 12, TextWrapping = TextWrapping.Wrap, Opacity = 0.6 };
@@ -170,14 +154,9 @@ public class PageDownloadServer : MyPageRight
 	private void BuildVersionCard(StackPanel root)
 	{
 		var topRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
-		_txtSearch = new TextBox { Width = 220, Padding = new Thickness(6) };
-		_txtSearch.SetResourceReference(TextBox.BackgroundProperty, "ColorBrush8");
-		_txtSearch.SetResourceReference(TextBox.ForegroundProperty, "ColorBrush1");
-		_txtSearch.SetResourceReference(TextBox.BorderBrushProperty, "ColorBrush6");
+		_txtSearch = new MyTextBox { Width = 220 };
 		_txtSearch.TextChanged += (_, _) => RebuildVersionList();
-		var btnRefresh = new Button { Content = "刷新", Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(12, 6, 12, 6), BorderThickness = new Thickness(0), Cursor = Cursors.Hand };
-		btnRefresh.SetResourceReference(Button.BackgroundProperty, "ColorBrush6");
-		btnRefresh.SetResourceReference(Button.ForegroundProperty, "ColorBrush1");
+		var btnRefresh = new MyButton { Text = "刷新", ColorType = MyButton.ColorState.Normal, Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(12, 6, 12, 6), Cursor = Cursors.Hand };
 		btnRefresh.Click += (_, _) => LoadVersionsAsync();
 		topRow.Children.Add(_txtSearch);
 		topRow.Children.Add(btnRefresh);
@@ -193,29 +172,25 @@ public class PageDownloadServer : MyPageRight
 
 	private void BuildActionCard(StackPanel root)
 	{
-		_btnInstall = new Button
+		_btnInstall = new MyButton
 		{
-			Content = "下载并安装服务端",
+			Text = "下载并安装服务端",
+			ColorType = MyButton.ColorState.Normal,
 			Padding = new Thickness(18, 9, 18, 9),
-			BorderThickness = new Thickness(0),
 			Cursor = Cursors.Hand,
 			IsEnabled = false
 		};
-		_btnInstall.SetResourceReference(Button.BackgroundProperty, "ColorBrush2");
-		_btnInstall.Foreground = Brushes.White;
 		_btnInstall.Click += BtnInstall_Click;
 
-		_btnOpenServer = new Button
+		_btnOpenServer = new MyButton
 		{
-			Content = "前往服务器管理",
+			Text = "前往服务器管理",
+			ColorType = MyButton.ColorState.Highlight,
 			Margin = new Thickness(8, 0, 0, 0),
 			Padding = new Thickness(18, 9, 18, 9),
-			BorderThickness = new Thickness(0),
 			Cursor = Cursors.Hand,
 			Visibility = Visibility.Collapsed
 		};
-		_btnOpenServer.SetResourceReference(Button.BackgroundProperty, "ColorBrush3");
-		_btnOpenServer.Foreground = Brushes.White;
 		_btnOpenServer.Click += (_, _) =>
 		{
 			if (_installedServer != null)
@@ -243,16 +218,16 @@ public class PageDownloadServer : MyPageRight
 
 	private void RefreshTargets()
 	{
-		var tag = (_comboTarget.SelectedItem as ComboBoxItem)?.Tag as ServerInfo;
+		var tag = (_comboTarget.SelectedItem as MyComboBoxItem)?.Tag as ServerInfo;
 		var prevFolder = tag?.FolderName;
 		_comboTarget.Items.Clear();
-		_comboTarget.Items.Add(new ComboBoxItem { Content = "新建服务器", Tag = null });
+		_comboTarget.Items.Add(new MyComboBoxItem { Content = "新建服务器", Tag = null });
 		foreach (var server in ServerManager.Servers)
-			_comboTarget.Items.Add(new ComboBoxItem { Content = "覆盖：" + server.Name, Tag = server });
+			_comboTarget.Items.Add(new MyComboBoxItem { Content = "覆盖：" + server.Name, Tag = server });
 		int idx = 0;
 		if (prevFolder != null)
 			for (int i = 1; i < _comboTarget.Items.Count; i++)
-				if ((_comboTarget.Items[i] as ComboBoxItem)?.Tag is ServerInfo s && string.Equals(s.FolderName, prevFolder, StringComparison.OrdinalIgnoreCase))
+				if ((_comboTarget.Items[i] as MyComboBoxItem)?.Tag is ServerInfo s && string.Equals(s.FolderName, prevFolder, StringComparison.OrdinalIgnoreCase))
 				{ idx = i; break; }
 		_comboTarget.SelectedIndex = idx;
 		UpdateTargetUi();
@@ -271,7 +246,7 @@ public class PageDownloadServer : MyPageRight
 				_txtNewName.Text = _autoName;
 			}
 		}
-		else if (_comboTarget.SelectedItem is ComboBoxItem { Tag: ServerInfo tag })
+		else if (_comboTarget.SelectedItem is MyComboBoxItem { Tag: ServerInfo tag })
 		{
 			_hintTarget.Text = $"将覆盖服务器「{tag.Name}」的现有核心文件（{tag.JarFileName}）。";
 		}
@@ -387,7 +362,7 @@ public class PageDownloadServer : MyPageRight
 
 	#region 安装
 
-	private void BtnInstall_Click(object sender, RoutedEventArgs e)
+	private void BtnInstall_Click(object sender, MouseButtonEventArgs e)
 	{
 		if (_isInstalling || _selectedVersion == null) return;
 		ServerInfo serverInfo;
@@ -405,7 +380,7 @@ public class PageDownloadServer : MyPageRight
 		}
 		else
 		{
-			if (_comboTarget.SelectedItem is not ComboBoxItem { Tag: ServerInfo tag })
+			if (_comboTarget.SelectedItem is not MyComboBoxItem { Tag: ServerInfo tag })
 				return;
 			serverInfo = tag;
 		}
