@@ -159,7 +159,6 @@ public partial class PageSetupUI : IPageView
             CheckHiddenSetupLog.Checked = uiHidden.SetupLog;
 
             // 子页面 工具
-            CheckHiddenToolsGameLink.Checked = uiHidden.ToolsGameLink;
             CheckHiddenToolsTest.Checked = uiHidden.ToolsTest;
 
             // 子页面 实例设置
@@ -859,29 +858,17 @@ public partial class PageSetupUI : IPageView
             // 工具子页面 (FrmToolsLeft)
             if (Launcher.frmToolsLeft is not null)
             {
-                Launcher.frmToolsLeft.ItemGameLink.Visibility = !HiddenForceShow && conf.ToolsGameLink
-                    ? Visibility.Collapsed
-                    : Visibility.Visible;
                 Launcher.frmToolsLeft.ItemTest.Visibility =
                     !HiddenForceShow && conf.ToolsTest ? Visibility.Collapsed : Visibility.Visible;
 
                 // 处理分类标题
-                var isGameLinkVisible = (!HiddenForceShow && !conf.ToolsGameLink) || HiddenForceShow;
-                Launcher.frmToolsLeft.TextGameLinkCategory.Visibility = isGameLinkVisible ? Visibility.Visible : Visibility.Collapsed;
-                if (isGameLinkVisible) Launcher.frmToolsLeft.TextGameLinkCategory.Opacity = 0.6;
-
                 var isToolsVisible = (!HiddenForceShow && !conf.ToolsTest) || HiddenForceShow;
                 Launcher.frmToolsLeft.TextToolsCategory.Visibility = isToolsVisible ? Visibility.Visible : Visibility.Collapsed;
                 if (isToolsVisible) Launcher.frmToolsLeft.TextToolsCategory.Opacity = 0.6;
 
-                // 统计工具页可用项数量
-                var toolsCount = 0;
-                if (!conf.ToolsGameLink)
-                    toolsCount += 1;
-                if (!conf.ToolsTest)
-                    toolsCount += 1;
+                // 大厅入口已移除，工具页仅剩「实用工具」一项
                 Launcher.frmToolsLeft.PanItem.Visibility =
-                    toolsCount < 2 && !HiddenForceShow ? Visibility.Collapsed : Visibility.Visible;
+                    !HiddenForceShow && conf.ToolsTest ? Visibility.Collapsed : Visibility.Visible;
             }
 
             // 其他入口刷新
@@ -958,7 +945,6 @@ public partial class PageSetupUI : IPageView
         if (!user)
             return;
         var isChecked = (bool)CheckHiddenPageTools.Checked;
-        CheckHiddenToolsGameLink.Checked = isChecked;
         CheckHiddenToolsTest.Checked = isChecked;
     }
 
@@ -967,7 +953,7 @@ public partial class PageSetupUI : IPageView
         if (!user)
             return;
         var conf = Config.Preference.Hide;
-        var allChecked = conf.ToolsGameLink && conf.ToolsTest;
+        var allChecked = conf.ToolsTest;
         CheckHiddenPageTools.Checked = allChecked;
     }
 
