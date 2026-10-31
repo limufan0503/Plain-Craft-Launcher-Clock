@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -29,6 +30,10 @@ public class PageServerLeft : MyPageLeft
 		btnRow.Children.Add(MakeButton("新建服务器", OnCreate));
 		btnRow.Children.Add(MakeButton("下载服务端", OnDownload));
 		root.Children.Add(btnRow);
+
+		var btnRow2 = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
+		btnRow2.Children.Add(MakeButton("网页管理", OnWebManage));
+		root.Children.Add(btnRow2);
 
 		var sep = new Separator { Margin = new Thickness(0, 10, 0, 6) };
 		sep.SetResourceReference(Separator.BackgroundProperty, "ColorBrush6");
@@ -174,6 +179,19 @@ public class PageServerLeft : MyPageLeft
 	private void OnDownload()
 	{
 		Launcher.frmMain?.PageChange(FormMain.PageType.Download, FormMain.PageSubType.DownloadServer);
+	}
+
+	private void OnWebManage()
+	{
+		ServerWebServer.Start();
+		try
+		{
+			Process.Start(new ProcessStartInfo($"http://127.0.0.1:{ServerWebServer.Port}/") { UseShellExecute = true });
+		}
+		catch (Exception ex)
+		{
+			MessageBox.Show("打开网页管理失败：" + ex.Message, "错误");
+		}
 	}
 
 	private static string? InputBox(string title, string prompt, string defaultText)

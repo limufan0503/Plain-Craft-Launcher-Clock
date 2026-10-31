@@ -331,7 +331,7 @@ public class PageServerRight : MyPageRight
 		lab.Width = 80;
 		lab.VerticalAlignment = VerticalAlignment.Center;
 		row.Children.Add(lab);
-		var combo = new MyComboBox { Width = 180 };
+		var combo = new MyComboBox { Width = 220 };
 		foreach (var (display, value) in options)
 			combo.Items.Add(new MyComboBoxItem { Content = display, Tag = value });
 		for (int i = 0; i < combo.Items.Count; i++)

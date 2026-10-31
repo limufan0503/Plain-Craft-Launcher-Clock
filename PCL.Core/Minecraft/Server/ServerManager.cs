@@ -561,6 +561,33 @@ public static class ServerManager
 
 	private static readonly Dictionary<string, Process> RunningProcesses = new();
 
+	private static readonly Dictionary<string, StringBuilder> ServerLogs = new();
+	private const int MaxServerLogChars = 100000;
+
+	private static void AppendServerLog(ServerInfo server, string line)
+	{
+		lock (ServerLogs)
+		{
+			if (!ServerLogs.TryGetValue(server.FolderName, out var sb))
+			{
+				sb = new StringBuilder();
+				ServerLogs[server.FolderName] = sb;
+			}
+			sb.AppendLine(line);
+			if (sb.Length > MaxServerLogChars)
+				sb.Remove(0, sb.Length - MaxServerLogChars);
+		}
+	}
+
+	/// <summary>获取某服务器缓存在内存中的控制台日志（供内嵌控制台与网页面板查询）。</summary>
+	public static string GetServerLog(ServerInfo server)
+	{
+		lock (ServerLogs)
+		{
+			return ServerLogs.TryGetValue(server.FolderName, out var sb) ? sb.ToString() : "";
+		}
+	}
+
 	/// <summary>服务器是否正在运行。</summary>
 	public static bool IsRunning(ServerInfo server)
 		=> RunningProcesses.TryGetValue(server.FolderName, out var p) && !p.HasExited;
@@ -631,8 +658,8 @@ public static class ServerManager
 			StandardInputEncoding = Encoding.UTF8
 		};
 		var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-		process.OutputDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) onOutput?.Invoke(e.Data); };
-		process.ErrorDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) onOutput?.Invoke(e.Data); };
+		process.OutputDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) { AppendServerLog(server, e.Data); onOutput?.Invoke(e.Data); } };
+		process.ErrorDataReceived += (_, e) => { if (!string.IsNullOrEmpty(e.Data)) { AppendServerLog(server, e.Data); onOutput?.Invoke(e.Data); } };
 		process.Exited += (_, _) =>
 		{
 			try { server.LastExitCode = process.ExitCode; } catch { }

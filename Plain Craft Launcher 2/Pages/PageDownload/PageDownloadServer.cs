@@ -139,7 +139,7 @@ public class PageDownloadServer : MyPageRight
 
 	private void BuildTargetCard(StackPanel root)
 	{
-		_comboTarget = new MyComboBox { Margin = new Thickness(0, 0, 0, 8) };
+		_comboTarget = new MyComboBox { Margin = new Thickness(0, 0, 0, 8), Width = 300 };
 		_comboTarget.SelectionChanged += (_, _) => UpdateTargetUi();
 
 		_txtNewName = new MyTextBox { Width = 280, Margin = new Thickness(0, 0, 0, 8) };
