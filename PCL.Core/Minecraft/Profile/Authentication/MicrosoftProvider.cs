@@ -23,16 +23,26 @@ public sealed class MicrosoftProvider : IAuthenticateProvider
     private const string DeviceEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode";
     private const string TokenEndpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
 
+    /// <summary>
+    /// Clock: 内置的微软 OAuth Client ID。
+    /// 来源为开源启动器 PrismLauncher 公开的 MSA Client ID（其 CMakeLists.txt 中 Launcher_MSA_CLIENT_ID，
+    /// 已通过 Minecraft API 审批，供社区启动器便捷使用）。仅用于用户本人的正版账号登录，不用于任何商业用途。
+    /// 若上游撤销该 ID，可通过「设置 → 启动 → 微软 Client ID」填入自申请的 ID 覆盖。
+    /// </summary>
+    private const string BuiltInClientId = "c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb";
+
     private readonly string _clientId;
 
     public MicrosoftProvider(string? clientId = null)
     {
-        // Clock: 优先使用用户自定义 Client ID（设置 → 启动 → 微软 Client ID），再回退到内置密钥
+        // Clock: 优先级 参数 → 用户自定义(设置页) → 官方注入密钥 → 内置 Client ID
         _clientId = !string.IsNullOrWhiteSpace(clientId)
             ? clientId
             : (!string.IsNullOrWhiteSpace(Config.Launch.MsClientId)
                 ? Config.Launch.MsClientId
-                : Secrets.MSOAuthClientId);
+                : (!string.IsNullOrWhiteSpace(Secrets.MSOAuthClientId)
+                    ? Secrets.MSOAuthClientId
+                    : BuiltInClientId));
         if (string.IsNullOrWhiteSpace(_clientId))
             throw new InvalidOperationException("Microsoft OAuth client id is not configured. 请在「设置 → 启动」中填写微软 Client ID。");
     }
