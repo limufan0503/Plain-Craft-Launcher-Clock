@@ -10,7 +10,7 @@ using PCL.Core.Minecraft.Server;
 namespace PCL;
 
 // Clock 新增：下载服务端右页面（选择核心类型 / 版本 / 目标服务器，一键下载并安装核心）。
-// 派生自 MyPageRight 以适配 PageChangeAnim；UI 采用标准 WPF 控件并套用主题色卡片。
+// 派生自 MyPageRight 以适配 PageChangeAnim；下载任务走右下角下载中心（与其它下载一致）。
 public class PageDownloadServer : MyPageRight
 {
 	private readonly List<ServerVersionEntry> _allVersions = new();
@@ -19,6 +19,7 @@ public class PageDownloadServer : MyPageRight
 	private bool _isLoadingVersions;
 	private bool _isInstalling;
 	private ServerInfo? _installedServer;
+	private string _autoName = "";
 
 	// UI 元素
 	private StackPanel _panTypes = null!;
@@ -31,7 +32,6 @@ public class PageDownloadServer : MyPageRight
 	private TextBlock _labLoading = null!;
 	private Button _btnInstall = null!;
 	private Button _btnOpenServer = null!;
-	private ProgressBar _progInstall = null!;
 	private TextBlock _labInstallStatus = null!;
 
 	public PageDownloadServer()
@@ -65,22 +65,34 @@ public class PageDownloadServer : MyPageRight
 
 	#region 构建 UI
 
-	private static Border Card(string title, params UIElement[] children)
+	private static Border Card(string? title, params UIElement[] children)
 	{
 		var border = new Border
 		{
-			Background = new SolidColorBrush(Color.FromArgb(28, 255, 255, 255)),
-			CornerRadius = new CornerRadius(10),
-			Padding = new Thickness(14),
-			Margin = new Thickness(0, 0, 0, 14)
+			CornerRadius = new CornerRadius(8),
+			Margin = new Thickness(0, 0, 0, 14),
+			Padding = new Thickness(16),
+			BorderThickness = new Thickness(1)
 		};
+		border.SetResourceReference(Border.BackgroundProperty, "ColorBrush8");
+		border.SetResourceReference(Border.BorderBrushProperty, "ColorBrush6");
 		var sp = new StackPanel();
 		if (!string.IsNullOrEmpty(title))
-			sp.Children.Add(new TextBlock { Text = title, FontSize = 15, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, Margin = new Thickness(0, 0, 0, 10) });
+			sp.Children.Add(Text(title, 15, FontWeights.SemiBold, new Thickness(0, 0, 0, 10)));
 		foreach (var c in children)
 			sp.Children.Add(c);
 		border.Child = sp;
 		return border;
+	}
+
+	private static TextBlock Text(string content, double fontSize = 13, FontWeight? weight = null, Thickness? margin = null, double opacity = 1.0)
+	{
+		var t = new TextBlock { Text = content, FontSize = fontSize, TextWrapping = TextWrapping.Wrap };
+		if (weight.HasValue) t.FontWeight = weight.Value;
+		if (margin.HasValue) t.Margin = margin.Value;
+		t.SetResourceReference(TextBlock.ForegroundProperty, "ColorBrush1");
+		t.Opacity = opacity;
+		return t;
 	}
 
 	private void BuildTypeList(StackPanel root)
@@ -97,10 +109,11 @@ public class PageDownloadServer : MyPageRight
 		{
 			Content = ModServerDownload.GetTypeName(type),
 			Margin = new Thickness(0, 0, 8, 0),
-			Padding = new Thickness(14, 8, 14, 8),
+			Padding = new Thickness(14, 7, 14, 7),
 			BorderThickness = new Thickness(0),
 			Cursor = Cursors.Hand,
-			Tag = type
+			Tag = type,
+			ToolTip = ModServerDownload.GetTypeDescription(type)
 		};
 		btn.Click += (_, _) => SelectType(type);
 		StyleTypeButton(btn, type == _selectedType);
@@ -109,10 +122,16 @@ public class PageDownloadServer : MyPageRight
 
 	private void StyleTypeButton(Button btn, bool selected)
 	{
-		btn.Background = new SolidColorBrush(selected
-			? Color.FromRgb(60, 130, 220)
-			: Color.FromArgb(55, 255, 255, 255));
-		btn.Foreground = Brushes.White;
+		if (selected)
+		{
+			btn.SetResourceReference(Button.BackgroundProperty, "ColorBrush3");
+			btn.Foreground = Brushes.White;
+		}
+		else
+		{
+			btn.SetResourceReference(Button.BackgroundProperty, "ColorBrush8");
+			btn.SetResourceReference(Button.ForegroundProperty, "ColorBrush1");
+		}
 	}
 
 	private void SelectType(ServerCoreType type, bool loadVersions = true)
@@ -130,25 +149,20 @@ public class PageDownloadServer : MyPageRight
 
 	private void BuildTargetCard(StackPanel root)
 	{
-		_comboTarget = new ComboBox
-		{
-			Margin = new Thickness(0, 0, 0, 8),
-			Foreground = Brushes.White,
-			Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255))
-		};
-		_comboTarget.SelectionChanged += ComboTarget_SelectionChanged;
+		_comboTarget = new ComboBox { Margin = new Thickness(0, 0, 0, 8) };
+		_comboTarget.SetResourceReference(ComboBox.BackgroundProperty, "ColorBrush8");
+		_comboTarget.SetResourceReference(ComboBox.ForegroundProperty, "ColorBrush1");
+		_comboTarget.SetResourceReference(ComboBox.BorderBrushProperty, "ColorBrush6");
+		_comboTarget.SelectionChanged += (_, _) => UpdateTargetUi();
 
-		_txtNewName = new TextBox
-		{
-			Width = 280,
-			Margin = new Thickness(0, 0, 0, 8),
-			Padding = new Thickness(6),
-			Foreground = Brushes.White,
-			Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255))
-		};
+		_txtNewName = new TextBox { Width = 280, Margin = new Thickness(0, 0, 0, 8), Padding = new Thickness(6) };
+		_txtNewName.SetResourceReference(TextBox.BackgroundProperty, "ColorBrush8");
+		_txtNewName.SetResourceReference(TextBox.ForegroundProperty, "ColorBrush1");
+		_txtNewName.SetResourceReference(TextBox.BorderBrushProperty, "ColorBrush6");
 		_txtNewName.TextChanged += (_, _) => UpdateTargetUi();
 
-		_hintTarget = new TextBlock { Foreground = new SolidColorBrush(Color.FromArgb(170, 255, 255, 255)), FontSize = 12, TextWrapping = TextWrapping.Wrap };
+		_hintTarget = new TextBlock { FontSize = 12, TextWrapping = TextWrapping.Wrap, Opacity = 0.6 };
+		_hintTarget.SetResourceReference(TextBlock.ForegroundProperty, "ColorBrush1");
 
 		root.Children.Add(Card("安装到", _comboTarget, _txtNewName, _hintTarget));
 	}
@@ -156,31 +170,22 @@ public class PageDownloadServer : MyPageRight
 	private void BuildVersionCard(StackPanel root)
 	{
 		var topRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
-		_txtSearch = new TextBox
-		{
-			Width = 220,
-			Padding = new Thickness(6),
-			Foreground = Brushes.White,
-			Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
-			Tag = "搜索版本"
-		};
-		_txtSearch.TextChanged += TxtSearch_TextChanged;
-		var btnRefresh = new Button
-		{
-			Content = "刷新",
-			Margin = new Thickness(8, 0, 0, 0),
-			Padding = new Thickness(12, 6, 12, 6),
-			BorderThickness = new Thickness(0),
-			Cursor = Cursors.Hand,
-			Background = new SolidColorBrush(Color.FromArgb(55, 255, 255, 255)),
-			Foreground = Brushes.White
-		};
+		_txtSearch = new TextBox { Width = 220, Padding = new Thickness(6) };
+		_txtSearch.SetResourceReference(TextBox.BackgroundProperty, "ColorBrush8");
+		_txtSearch.SetResourceReference(TextBox.ForegroundProperty, "ColorBrush1");
+		_txtSearch.SetResourceReference(TextBox.BorderBrushProperty, "ColorBrush6");
+		_txtSearch.TextChanged += (_, _) => RebuildVersionList();
+		var btnRefresh = new Button { Content = "刷新", Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(12, 6, 12, 6), BorderThickness = new Thickness(0), Cursor = Cursors.Hand };
+		btnRefresh.SetResourceReference(Button.BackgroundProperty, "ColorBrush6");
+		btnRefresh.SetResourceReference(Button.ForegroundProperty, "ColorBrush1");
 		btnRefresh.Click += (_, _) => LoadVersionsAsync();
 		topRow.Children.Add(_txtSearch);
 		topRow.Children.Add(btnRefresh);
 
-		_labVersionCount = new TextBlock { Foreground = new SolidColorBrush(Color.FromArgb(170, 255, 255, 255)), FontSize = 12, Margin = new Thickness(0, 0, 0, 6) };
-		_labLoading = new TextBlock { Text = "加载中…", Foreground = new SolidColorBrush(Color.FromArgb(170, 255, 255, 255)), FontSize = 13, Margin = new Thickness(0, 4, 0, 4), Visibility = Visibility.Collapsed };
+		_labVersionCount = new TextBlock { FontSize = 12, Margin = new Thickness(0, 0, 0, 6), Opacity = 0.6 };
+		_labVersionCount.SetResourceReference(TextBlock.ForegroundProperty, "ColorBrush1");
+		_labLoading = new TextBlock { Text = "加载中…", FontSize = 13, Margin = new Thickness(0, 4, 0, 4), Visibility = Visibility.Collapsed };
+		_labLoading.SetResourceReference(TextBlock.ForegroundProperty, "ColorBrush1");
 		_panVersions = new StackPanel { Orientation = Orientation.Vertical };
 
 		root.Children.Add(Card("选择版本", topRow, _labVersionCount, _labLoading, _panVersions));
@@ -194,10 +199,10 @@ public class PageDownloadServer : MyPageRight
 			Padding = new Thickness(18, 9, 18, 9),
 			BorderThickness = new Thickness(0),
 			Cursor = Cursors.Hand,
-			Background = new SolidColorBrush(Color.FromRgb(40, 140, 90)),
-			Foreground = Brushes.White,
 			IsEnabled = false
 		};
+		_btnInstall.SetResourceReference(Button.BackgroundProperty, "ColorBrush2");
+		_btnInstall.Foreground = Brushes.White;
 		_btnInstall.Click += BtnInstall_Click;
 
 		_btnOpenServer = new Button
@@ -207,10 +212,10 @@ public class PageDownloadServer : MyPageRight
 			Padding = new Thickness(18, 9, 18, 9),
 			BorderThickness = new Thickness(0),
 			Cursor = Cursors.Hand,
-			Background = new SolidColorBrush(Color.FromRgb(60, 130, 220)),
-			Foreground = Brushes.White,
 			Visibility = Visibility.Collapsed
 		};
+		_btnOpenServer.SetResourceReference(Button.BackgroundProperty, "ColorBrush3");
+		_btnOpenServer.Foreground = Brushes.White;
 		_btnOpenServer.Click += (_, _) =>
 		{
 			if (_installedServer != null)
@@ -222,22 +227,14 @@ public class PageDownloadServer : MyPageRight
 			Launcher.frmMain?.PageChange(FormMain.PageType.Server);
 		};
 
-		_progInstall = new ProgressBar
-		{
-			Height = 8,
-			Margin = new Thickness(0, 10, 0, 0),
-			IsIndeterminate = true,
-			Visibility = Visibility.Collapsed,
-			Foreground = new SolidColorBrush(Color.FromRgb(60, 130, 220))
-		};
-		_labInstallStatus = new TextBlock { Foreground = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)), FontSize = 13, Margin = new Thickness(0, 8, 0, 0) };
+		_labInstallStatus = new TextBlock { FontSize = 13, Margin = new Thickness(0, 8, 0, 0) };
+		_labInstallStatus.SetResourceReference(TextBlock.ForegroundProperty, "ColorBrush1");
 
 		var row = new StackPanel { Orientation = Orientation.Horizontal };
 		row.Children.Add(_btnInstall);
 		row.Children.Add(_btnOpenServer);
 
-		var card = Card("", row, _progInstall, _labInstallStatus);
-		root.Children.Add(card);
+		root.Children.Add(Card("", row, _labInstallStatus));
 	}
 
 	#endregion
@@ -261,8 +258,6 @@ public class PageDownloadServer : MyPageRight
 		UpdateTargetUi();
 	}
 
-	private void ComboTarget_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateTargetUi();
-
 	private void UpdateTargetUi()
 	{
 		bool isNew = _comboTarget.SelectedIndex <= 0;
@@ -272,7 +267,7 @@ public class PageDownloadServer : MyPageRight
 			_hintTarget.Text = "将为该服务端核心创建一个新的服务器实例。";
 			if (string.IsNullOrWhiteSpace(_txtNewName.Text) || _txtNewName.Text == _autoName)
 			{
-				_autoName = ModServerDownload.GetTypeName(_selectedType) + ( _selectedVersion != null ? "-" + _selectedVersion.Version : "");
+				_autoName = ModServerDownload.GetTypeName(_selectedType) + (_selectedVersion != null ? "-" + _selectedVersion.Version : "");
 				_txtNewName.Text = _autoName;
 			}
 		}
@@ -282,8 +277,6 @@ public class PageDownloadServer : MyPageRight
 		}
 		_btnInstall.IsEnabled = !_isInstalling && _selectedVersion != null;
 	}
-
-	private string _autoName = "";
 
 	#endregion
 
@@ -335,29 +328,39 @@ public class PageDownloadServer : MyPageRight
 			? _allVersions
 			: _allVersions.Where(v => v.Version.Contains(filter, StringComparison.OrdinalIgnoreCase)
 				|| (v.Info?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
-		_labVersionCount.Text = $"共 {list.Count} 个版本" + (string.IsNullOrEmpty(filter) ? "" : $"（筛选后）");
+		_labVersionCount.Text = $"共 {list.Count} 个版本" + (string.IsNullOrEmpty(filter) ? "" : "（筛选后）");
 		foreach (var item in list)
 			_panVersions.Children.Add(MakeVersionItem(item));
 		if (list.Count == 0)
-			_panVersions.Children.Add(new TextBlock { Text = "没有匹配的版本", Foreground = new SolidColorBrush(Color.FromArgb(170, 255, 255, 255)), Margin = new Thickness(4, 8, 0, 8) });
+			_panVersions.Children.Add(Text("没有匹配的版本", 13, null, new Thickness(4, 8, 0, 8), 0.6));
 		_btnInstall.IsEnabled = !_isInstalling && _selectedVersion != null;
 	}
 
 	private Border MakeVersionItem(ServerVersionEntry entry)
 	{
+		bool selected = entry == _selectedVersion;
 		var border = new Border
 		{
-			Background = new SolidColorBrush(Color.FromArgb(45, 255, 255, 255)),
 			CornerRadius = new CornerRadius(7),
 			Margin = new Thickness(0, 0, 0, 6),
 			Padding = new Thickness(12, 8, 12, 8),
 			Cursor = Cursors.Hand,
-			Tag = entry
+			Tag = entry,
+			BorderThickness = new Thickness(selected ? 2 : 1)
 		};
+		border.SetResourceReference(Border.BackgroundProperty, selected ? "ColorBrush7" : "ColorBrush8");
+		border.SetResourceReference(Border.BorderBrushProperty, selected ? "ColorBrush3" : "ColorBrush6");
+
 		var sp = new StackPanel();
-		sp.Children.Add(new TextBlock { Text = entry.Version, Foreground = Brushes.White, FontWeight = FontWeights.SemiBold });
+		var nameTb = new TextBlock { Text = entry.Version, FontWeight = FontWeights.SemiBold };
+		nameTb.SetResourceReference(TextBlock.ForegroundProperty, "ColorBrush1");
+		sp.Children.Add(nameTb);
 		if (!string.IsNullOrEmpty(entry.Info))
-			sp.Children.Add(new TextBlock { Text = entry.Info + $"  ·  Java {entry.JavaMajorVersion}", Foreground = new SolidColorBrush(Color.FromArgb(170, 255, 255, 255)), FontSize = 12 });
+		{
+			var infoTb = new TextBlock { Text = entry.Info + "  ·  Java " + entry.JavaMajorVersion, FontSize = 12, Margin = new Thickness(0, 2, 0, 0), Opacity = 0.6 };
+			infoTb.SetResourceReference(TextBlock.ForegroundProperty, "ColorBrush1");
+			sp.Children.Add(infoTb);
+		}
 		border.Child = sp;
 		border.MouseLeftButtonUp += (_, _) =>
 		{
@@ -366,8 +369,6 @@ public class PageDownloadServer : MyPageRight
 			_labInstallStatus.Text = "已选择：" + entry.Version;
 			UpdateTargetUi();
 		};
-		if (entry == _selectedVersion)
-			border.Background = new SolidColorBrush(Color.FromRgb(60, 130, 220));
 		return border;
 	}
 
@@ -375,12 +376,12 @@ public class PageDownloadServer : MyPageRight
 	{
 		foreach (var child in _panVersions.Children.OfType<Border>())
 		{
-			var selected = child.Tag is ServerVersionEntry e && e == _selectedVersion;
-			child.Background = new SolidColorBrush(selected ? Color.FromRgb(60, 130, 220) : Color.FromArgb(45, 255, 255, 255));
+			bool selected = child.Tag is ServerVersionEntry e && e == _selectedVersion;
+			child.SetResourceReference(Border.BackgroundProperty, selected ? "ColorBrush7" : "ColorBrush8");
+			child.SetResourceReference(Border.BorderBrushProperty, selected ? "ColorBrush3" : "ColorBrush6");
+			child.BorderThickness = new Thickness(selected ? 2 : 1);
 		}
 	}
-
-	private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e) => RebuildVersionList();
 
 	#endregion
 
@@ -413,8 +414,7 @@ public class PageDownloadServer : MyPageRight
 		_installedServer = serverInfo;
 		_btnInstall.IsEnabled = false;
 		_btnOpenServer.Visibility = Visibility.Collapsed;
-		_labInstallStatus.Text = "正在下载并安装服务端…";
-		_progInstall.Visibility = Visibility.Visible;
+		_labInstallStatus.Text = "已加入下载中心，请在右下角查看进度";
 
 		Loading.LoaderCombo<string> loaderCombo;
 		try
@@ -427,9 +427,16 @@ public class PageDownloadServer : MyPageRight
 			return;
 		}
 		loaderCombo.OnStateChangedUi += InstallLoader_StateChanged;
-		_progInstall.Tag = loaderCombo;
-		try { loaderCombo.Start(); }
-		catch (Exception ex) { InstallFinished(false, ex.Message); }
+		try
+		{
+			loaderCombo.Start();
+			Loading.LoaderTaskbarAdd(loaderCombo);
+			Launcher.frmMain?.BtnExtraDownload.ShowRefresh();
+		}
+		catch (Exception ex)
+		{
+			InstallFinished(false, ex.Message);
+		}
 	}
 
 	private void InstallLoader_StateChanged(Loading.LoaderBase loader, Common.LoadState newState, Common.LoadState oldState)
@@ -451,7 +458,6 @@ public class PageDownloadServer : MyPageRight
 	private void InstallFinished(bool success, string message)
 	{
 		_isInstalling = false;
-		_progInstall.Visibility = Visibility.Collapsed;
 		_btnInstall.IsEnabled = _selectedVersion != null;
 		RefreshTargets();
 		if (!success)

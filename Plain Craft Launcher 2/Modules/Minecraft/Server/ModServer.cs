@@ -4,8 +4,7 @@ using PCL.Core.Minecraft.Server;
 namespace PCL;
 
 // Clock 新增：服务器运行辅助（开服 / 选 Java / 运行状态）。
-// 本移植版采用「一键开服」独立进程模型：启动 java 进程后不长期持有句柄，
-// 因此 IsRunning 默认返回 false；如需真正的进程追踪可在此扩展。
+// 实际进程管理由 ServerManager（PCL.Core）实现，这里做 UI 层薄封装。
 public static class ModServer
 {
 	// 为给定服务器选择可执行的 Java 路径。
@@ -17,10 +16,7 @@ public static class ModServer
 		return "java";
 	}
 
-	public static bool IsRunning(ServerInfo server) => false;
+	public static bool IsRunning(ServerInfo server) => ServerManager.IsRunning(server);
 
-	public static void Stop(ServerInfo server, bool force = false)
-	{
-		// 简化模型下不追踪进程，留空。
-	}
+	public static void Stop(ServerInfo server, bool force = false) => ServerManager.StopServer(server);
 }

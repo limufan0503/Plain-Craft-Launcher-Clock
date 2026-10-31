@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -502,4 +504,98 @@ public static class ServerManager
 		Directory.CreateDirectory(server.LogFolder);
 		return server.LatestLogPath;
 	}
+
+	#region 进程管理（Clock 新增）
+
+	private static readonly Dictionary<string, Process> RunningProcesses = new();
+
+	/// <summary>服务器是否正在运行。</summary>
+	public static bool IsRunning(ServerInfo server)
+		=> RunningProcesses.TryGetValue(server.FolderName, out var p) && !p.HasExited;
+
+	/// <summary>获取正在运行的服务器进程（未运行则返回 null）。</summary>
+	public static Process? GetRunningProcess(ServerInfo server)
+		=> RunningProcesses.TryGetValue(server.FolderName, out var p) && !p.HasExited ? p : null;
+
+	/// <summary>
+	/// 确保已同意 Minecraft EULA。Minecraft 服务器首次启动若 eula=false 会立即退出，
+	/// 这是「刚启动控制台就消失」的常见原因，这里在开服前自动写入 eula=true。
+	/// </summary>
+	public static void EnsureEulaAccepted(ServerInfo server)
+	{
+		try
+		{
+			string eulaPath = Path.Combine(server.ServerPath, "eula.txt");
+			bool accepted = false;
+			if (File.Exists(eulaPath))
+			{
+				string content = File.ReadAllText(eulaPath);
+				accepted = Regex.IsMatch(content, @"eula\s*=\s*true", RegexOptions.IgnoreCase);
+			}
+			if (!accepted)
+			{
+				File.WriteAllText(eulaPath,
+					"# 本文件由 Clock 启动器自动生成，表示你已阅读并同意 Minecraft EULA\n" +
+					"# 原文：https://aka.ms/MinecraftEULA\n" +
+					"eula=true\n");
+			}
+			if (!server.EulaAccepted)
+			{
+				server.EulaAccepted = true;
+				SaveServerConfig(server, notify: false);
+			}
+		}
+		catch (Exception ex)
+		{
+			LogWrapper.Error(ex, "ServerManager", "写入 eula.txt 失败");
+		}
+	}
+
+	/// <summary>
+	/// 启动服务器（独立 java 进程，保留控制台窗口供查看日志/输入命令）。
+	/// 返回启动的进程对象；抛异常表示启动失败。
+	/// </summary>
+	public static Process StartServer(ServerInfo server)
+	{
+		if (IsRunning(server))
+			throw new InvalidOperationException("服务器已在运行中");
+		if (!server.HasCoreFile)
+			throw new InvalidOperationException("服务器核心文件不存在，请先下载服务端核心");
+		EnsureEulaAccepted(server);
+
+		string java = string.IsNullOrWhiteSpace(server.JavaPath) ? "java" : server.JavaPath;
+		string args = $"-Xmx{server.MemoryMb}M {server.JvmArgs} -jar \"{server.JarPath}\" {server.ServerArgs}";
+		var psi = new ProcessStartInfo(java, args)
+		{
+			WorkingDirectory = server.ServerPath,
+			UseShellExecute = false,
+			CreateNoWindow = false
+		};
+		var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+		process.Exited += (_, _) =>
+		{
+			try { server.LastExitCode = process.ExitCode; } catch { }
+			RunningProcesses.Remove(server.FolderName);
+			SaveServerConfig(server, notify: false);
+		};
+		if (!process.Start())
+			throw new InvalidOperationException("无法启动 java 进程，请检查 Java 路径是否正确");
+		RunningProcesses[server.FolderName] = process;
+		server.LastStartedAt = DateTime.Now;
+		server.LastExitCode = null;
+		SaveServerConfig(server, notify: false);
+		return process;
+	}
+
+	/// <summary>停止服务器。</summary>
+	public static void StopServer(ServerInfo server)
+	{
+		if (RunningProcesses.TryGetValue(server.FolderName, out var p))
+		{
+			try { if (!p.HasExited) p.Kill(entireProcessTree: true); } catch { }
+			RunningProcesses.Remove(server.FolderName);
+		}
+	}
+
+	#endregion
 }
