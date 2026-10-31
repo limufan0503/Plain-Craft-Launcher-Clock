@@ -203,7 +203,11 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="1*" />
                     </Grid.ColumnDefinitions>
-                    <controls:BlurBorder IsHitTestVisible="False">
+                    <controls:BlurBorder IsHitTestVisible="False" GlassMode="True"
+                                         RefractionScale="{DynamicResource GlassRefractionScale}"
+                                         GlassTint="{DynamicResource ColorBrushGlassTint}"
+                                         GlassTintOpacity="0.12"
+                                         GlassHighlightOpacity="0.5">
                         <local:AnimatedBackgroundGrid x:Name="RectLeftBackground" Width="0"
                                                       BackgroundBrush="{DynamicResource ColorBrushTransparentBackground}" />
                     </controls:BlurBorder>

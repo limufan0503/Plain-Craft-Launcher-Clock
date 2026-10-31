@@ -152,43 +152,123 @@ public class BlurBorder : Border
     /// <inheritdoc/>
     protected override void OnRender(DrawingContext dc)
     {
-        // 防止无意义渲染
-        if (BlurRadius == 0
-            || Opacity == 0
+        // 完全不可见时无需渲染
+        if (Opacity == 0
             || Visibility is Visibility.Collapsed or Visibility.Hidden)
         {
             base.OnRender(dc);
             return;
         }
-        
-        DrawingVisual drawingVisual = new DrawingVisual()
-        {
-            Clip = new RectangleGeometry(new Rect(0, 0, RenderSize.Width, RenderSize.Height)),
-            Effect = CreateOptimizedBlurEffect()
-        };
 
-        using (DrawingContext visualContext = drawingVisual.RenderOpen())
+        // 仅当开启模糊时才绘制模糊背景与折射
+        if (BlurRadius != 0)
         {
-            BackgroundPresenter.DrawBackground(visualContext, this, _panelStack, MaxDepth, false);
-        }
-
-        if (drawingVisual.Drawing is not null)
-        {
-            var layoutClip = CalculateLayoutClip(RenderSize, BorderThickness, CornerRadius);
-            if (layoutClip is not null)
+            DrawingVisual drawingVisual = new DrawingVisual()
             {
-                dc.PushClip(layoutClip);
+                Clip = new RectangleGeometry(new Rect(0, 0, RenderSize.Width, RenderSize.Height)),
+                Effect = CreateOptimizedBlurEffect()
+            };
+
+            using (DrawingContext visualContext = drawingVisual.RenderOpen())
+            {
+                BackgroundPresenter.DrawBackground(visualContext, this, _panelStack, MaxDepth, false);
             }
 
-            BackgroundPresenter.DrawVisual(dc, drawingVisual, default);
+            if (drawingVisual.Drawing is not null)
+            {
+                var layoutClip = CalculateLayoutClip(RenderSize, BorderThickness, CornerRadius);
+                if (layoutClip is not null)
+                {
+                    dc.PushClip(layoutClip);
+                }
 
+                // Clock: 液态玻璃折射 —— 轻微缩放背景，模拟光线穿过玻璃时发生的弯曲
+                if (RefractionScale is > 1.0 or < 1.0)
+                {
+                    var center = new Point(RenderSize.Width / 2, RenderSize.Height / 2);
+                    dc.PushTransform(new ScaleTransform(RefractionScale, RefractionScale, center.X, center.Y));
+                }
+
+                BackgroundPresenter.DrawVisual(dc, drawingVisual, default);
+
+                if (RefractionScale is > 1.0 or < 1.0)
+                {
+                    dc.Pop();
+                }
+
+                if (layoutClip is not null)
+                {
+                    dc.Pop();
+                }
+            }
+        }
+
+        base.OnRender(dc);
+
+        // Clock: 液态玻璃高光 —— 在玻璃表面叠加顶部镜面高光与内描边，营造湿润通透质感
+        // 独立于模糊开关，保证玻璃质感始终可见。
+        if (GlassMode)
+        {
+            DrawGlassSheen(dc);
+        }
+    }
+
+    /// <summary>
+    /// Clock: 绘制液态玻璃质感叠层（顶部镜面高光 + 可选染色 + 内描边高光）。
+    /// 仅当 <see cref="GlassMode"/> 为 true 时由 <see cref="OnRender"/> 调用。
+    /// </summary>
+    private void DrawGlassSheen(DrawingContext dc)
+    {
+        var rect = new Rect(0, 0, RenderSize.Width, RenderSize.Height);
+        var layoutClip = CalculateLayoutClip(RenderSize, BorderThickness, CornerRadius);
+        if (layoutClip is not null)
+        {
+            dc.PushClip(layoutClip);
+        }
+
+        try
+        {
+            // 顶部镜面高光：白色由不透明渐变至透明，仅作用于顶部约 46px
+            if (GlassHighlightOpacity > 0.001)
+            {
+                var highlightHeight = Math.Min(RenderSize.Height * 0.5, 46.0);
+                var hlBrush = new LinearGradientBrush
+                {
+                    StartPoint = new Point(0, 0),
+                    EndPoint = new Point(0, 1),
+                    GradientStops =
+                    {
+                        new GradientStop(Color.FromArgb((byte)(255 * GlassHighlightOpacity), 255, 255, 255), 0.0),
+                        new GradientStop(Color.FromArgb(0, 255, 255, 255), 1.0)
+                    }
+                };
+                dc.DrawRectangle(hlBrush, null, new Rect(0, 0, RenderSize.Width, highlightHeight));
+            }
+
+            // 整体淡染色（玻璃的冷色调）
+            if (GlassTint is { } tint && GlassTintOpacity > 0.001)
+            {
+                dc.PushOpacity(GlassTintOpacity);
+                dc.DrawRectangle(tint, null, rect);
+                dc.Pop();
+            }
+
+            // 内描边高光：沿圆角轮廓描一圈白色细线，形成玻璃边缘反光
+            if (GlassHighlightOpacity > 0.001 && layoutClip is not null)
+            {
+                var pen = new Pen(
+                    new SolidColorBrush(Color.FromArgb((byte)(255 * GlassHighlightOpacity * 0.6), 255, 255, 255)),
+                    1.0);
+                dc.DrawGeometry(null, pen, layoutClip);
+            }
+        }
+        finally
+        {
             if (layoutClip is not null)
             {
                 dc.Pop();
             }
         }
-
-        base.OnRender(dc);
     }
 
     /// <summary>
@@ -269,6 +349,82 @@ public class BlurBorder : Border
     /// </summary>
     public static readonly DependencyProperty BlurSamplingRateProperty =
         DependencyProperty.Register(nameof(BlurSamplingRate), typeof(double), typeof(BlurBorder), new FrameworkPropertyMetadata(0.9, propertyChangedCallback: OnRenderPropertyChanged));
+
+    /// <summary>
+    /// Clock: 液态玻璃折射强度。1 表示不放大；略大于 1（如 1.08）会轻微放大背景，模拟光线穿过玻璃的弯曲。
+    /// </summary>
+    public static readonly DependencyProperty RefractionScaleProperty =
+        DependencyProperty.Register(nameof(RefractionScale), typeof(double), typeof(BlurBorder), new FrameworkPropertyMetadata(1.0, propertyChangedCallback: OnRenderPropertyChanged));
+
+    /// <summary>
+    /// Clock: 是否启用液态玻璃高光叠层（顶部镜面高光 + 内描边 + 可选染色）。默认 false。
+    /// </summary>
+    public static readonly DependencyProperty GlassModeProperty =
+        DependencyProperty.Register(nameof(GlassMode), typeof(bool), typeof(BlurBorder), new FrameworkPropertyMetadata(false, propertyChangedCallback: OnRenderPropertyChanged));
+
+    /// <summary>
+    /// Clock: 液态玻璃染色画刷。
+    /// </summary>
+    public static readonly DependencyProperty GlassTintProperty =
+        DependencyProperty.Register(nameof(GlassTint), typeof(Brush), typeof(BlurBorder), new FrameworkPropertyMetadata(null, propertyChangedCallback: OnRenderPropertyChanged));
+
+    /// <summary>
+    /// Clock: 液态玻璃染色不透明度 (0-1)。
+    /// </summary>
+    public static readonly DependencyProperty GlassTintOpacityProperty =
+        DependencyProperty.Register(nameof(GlassTintOpacity), typeof(double), typeof(BlurBorder), new FrameworkPropertyMetadata(0.0, propertyChangedCallback: OnRenderPropertyChanged));
+
+    /// <summary>
+    /// Clock: 液态玻璃高光不透明度 (0-1)。
+    /// </summary>
+    public static readonly DependencyProperty GlassHighlightOpacityProperty =
+        DependencyProperty.Register(nameof(GlassHighlightOpacity), typeof(double), typeof(BlurBorder), new FrameworkPropertyMetadata(0.5, propertyChangedCallback: OnRenderPropertyChanged));
+
+    /// <summary>
+    /// Clock: 液态玻璃折射强度。1 表示不放大；略大于 1（如 1.08）会轻微放大背景，模拟光线穿过玻璃的弯曲。
+    /// </summary>
+    public double RefractionScale
+    {
+        get { return (double)GetValue(RefractionScaleProperty); }
+        set { SetValue(RefractionScaleProperty, value); }
+    }
+
+    /// <summary>
+    /// Clock: 是否启用液态玻璃高光叠层（顶部镜面高光 + 内描边 + 可选染色）。
+    /// 默认 false，保持与原有模糊玻璃行为完全兼容。
+    /// </summary>
+    public bool GlassMode
+    {
+        get { return (bool)GetValue(GlassModeProperty); }
+        set { SetValue(GlassModeProperty, value); }
+    }
+
+    /// <summary>
+    /// Clock: 液态玻璃染色画刷（叠加在玻璃表面，通常为淡蓝色半透明画刷）。
+    /// </summary>
+    public Brush? GlassTint
+    {
+        get { return (Brush?)GetValue(GlassTintProperty); }
+        set { SetValue(GlassTintProperty, value); }
+    }
+
+    /// <summary>
+    /// Clock: 液态玻璃染色不透明度 (0-1)。
+    /// </summary>
+    public double GlassTintOpacity
+    {
+        get { return (double)GetValue(GlassTintOpacityProperty); }
+        set { SetValue(GlassTintOpacityProperty, Math.Max(0.0, Math.Min(1.0, value))); }
+    }
+
+    /// <summary>
+    /// Clock: 液态玻璃高光不透明度 (0-1)。
+    /// </summary>
+    public double GlassHighlightOpacity
+    {
+        get { return (double)GetValue(GlassHighlightOpacityProperty); }
+        set { SetValue(GlassHighlightOpacityProperty, Math.Max(0.0, Math.Min(1.0, value))); }
+    }
 
     private static void OnRenderPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
