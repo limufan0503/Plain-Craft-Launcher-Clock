@@ -27,9 +27,14 @@ public sealed class MicrosoftProvider : IAuthenticateProvider
 
     public MicrosoftProvider(string? clientId = null)
     {
-        _clientId = string.IsNullOrWhiteSpace(clientId) ? Secrets.MSOAuthClientId : clientId;
+        // Clock: 优先使用用户自定义 Client ID（设置 → 启动 → 微软 Client ID），再回退到内置密钥
+        _clientId = !string.IsNullOrWhiteSpace(clientId)
+            ? clientId
+            : (!string.IsNullOrWhiteSpace(Config.Launch.MsClientId)
+                ? Config.Launch.MsClientId
+                : Secrets.MSOAuthClientId);
         if (string.IsNullOrWhiteSpace(_clientId))
-            throw new InvalidOperationException("Microsoft OAuth client id is not configured.");
+            throw new InvalidOperationException("Microsoft OAuth client id is not configured. 请在「设置 → 启动」中填写微软 Client ID。");
     }
 
     public async Task<DeviceCodeData> GetDeviceCodeAsync(CancellationToken token)

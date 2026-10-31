@@ -35,6 +35,8 @@
                             <RowDefinition Height="28" />
                             <RowDefinition Height="9" />
                             <RowDefinition Height="28" />
+                            <RowDefinition Height="9" />
+                            <RowDefinition Height="28" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Left" Text="{loc:Loc Setup.Launch.Options.InstanceIsolation.Label}"
@@ -161,6 +163,13 @@
                             <local:MyComboBoxItem Content="{loc:Loc Setup.Launch.Options.IpStack.JavaDefault}" />
                             <local:MyComboBoxItem Content="{loc:Loc Setup.Launch.Options.IpStack.Ipv6}" />
                         </local:MyComboBox>
+                        <TextBlock VerticalAlignment="Center" Grid.Row="16" HorizontalAlignment="Left" Text="微软 Client ID"
+                                   Margin="0,0,25,0"
+                                   ToolTip="用于正版登录的微软 Azure 应用 Client ID。留空则使用内置密钥（Clock 通常为空，需自行申请填写）" />
+                        <local:MyTextBox Grid.Row="16" Grid.Column="1" Grid.ColumnSpan="2" Tag="LoginMsClientId"
+                                         Text="{Binding MsClientIdText, Mode=OneWay}" ValidatedTextChanged="TextBoxChange"
+                                         HintText="留空则使用内置密钥；正版登录需填写自申请的 Client ID"
+                                         ToolTip="用于正版登录的微软 Azure 应用 Client ID" />
                     </Grid>
                 </StackPanel>
             </local:MyCard>

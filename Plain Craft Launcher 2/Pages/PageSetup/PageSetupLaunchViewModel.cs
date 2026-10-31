@@ -23,6 +23,8 @@ public partial class PageSetupLaunchViewModel : ViewModelBase
 
     [ObservableProperty] private int _msAuthTypeIndex = Math.Max(0, Config.Launch.LoginMsAuthType);
 
+    [ObservableProperty] private string _msClientIdText = Config.Launch.MsClientId;
+
     [ObservableProperty] private int _preferredIpStackIndex = Math.Max(0, (int)Config.Launch.PreferredIpStack);
 
     [ObservableProperty] private string _preLaunchText = Config.Launch.PreLaunchCommand;

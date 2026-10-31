@@ -600,6 +600,11 @@ public static partial class Config
         /// 正版登录方式。
         /// </summary>
         [ConfigItem<int>("LoginMsAuthType", 1)] public partial int LoginMsAuthType { get; set; }
+
+        /// <summary>
+        /// 自定义微软 OAuth Client ID（用于正版登录）。留空则使用内置密钥（Clock fork 通常为空）。
+        /// </summary>
+        [ConfigItem<string>("LoginMsClientId", "", ConfigSource.Local)] public partial string MsClientId { get; set; }
     }
 
     /// <summary>
