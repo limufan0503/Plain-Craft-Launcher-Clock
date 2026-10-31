@@ -77,7 +77,7 @@ public static class UpdateManager
 
     public static void UpdateStart(UpdateEnums.UpdateType type, string receivedKey = null, bool forceValidated = false)
     {
-        var dlTargetPath = Common.ExePath + @"PCL\Plain Craft Launcher Community Edition.exe";
+        var dlTargetPath = Common.ExePath + @"PCL\Clock.exe";
         Common.RunInNewThread(() =>
         {
             try
@@ -190,7 +190,7 @@ public static class UpdateManager
     {
         try
         {
-            var fileName = Common.ExePath + @"PCL\Plain Craft Launcher Community Edition.exe";
+            var fileName = Common.ExePath + @"PCL\Clock.exe";
             if (!File.Exists(fileName))
             {
                 Common.Log("[System] 更新失败：未找到更新文件");

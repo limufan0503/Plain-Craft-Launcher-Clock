@@ -268,7 +268,7 @@ public partial class PageSetupLauncherMisc : IPageView
 
     #endregion
 
-    #region 停止使用 PCL CE
+    #region 停止使用 Clock
 
     private async void BtnSystemStopUsingPclCe_Click(object sender, MouseButtonEventArgs e)
     {
@@ -297,7 +297,7 @@ public partial class PageSetupLauncherMisc : IPageView
         }
         catch (Exception ex)
         {
-            Common.Log(ex, "停止使用 PCL CE 失败", Common.LogLevel.Msgbox,
+            Common.Log(ex, "停止使用 Clock 失败", Common.LogLevel.Msgbox,
                 userSummary: Lang.Text("Setup.Error.OperationFailed"));
         }
     }
